@@ -1,16 +1,40 @@
 #include <map>
 #include <string>
+#include <iostream>
 using namespace std;
 #include <cmath>
 
-
-typedef int VAR;
+typedef int VARID;
+struct VAR{
+	string vname;
+	VARID vid;
+	static int vid_acc;
+	static map<int, VAR> vars;
+	VAR(){
+		vid=-1;
+		vname="?";
+	};
+	VAR(string vname):vname(vname){
+		vid=vid_acc++;
+	};
+	void clone(VAR *src) const{
+		src->vname=vname;
+		src->vid=vid;
+	};
+	bool eq(VAR &rhs) const{
+		return (vid==rhs.vid)&&(vname==rhs.vname);
+	};
+	bool operator<(VAR rhs) const{
+		return (vname==rhs.vname)&&(vid==rhs.vid);
+	}
+};
+int VAR::vid_acc=0;
 
 class der_f{ public:
 	virtual operator string() const =0;
-	virtual long double value_at(map<VAR, long double>) const =0;
+	virtual long double value_at(map<VARID, long double>) const =0;
 	long double value_at_origin() const{
-		map<VAR, long double> empty_vmap;
+		map<VARID, long double> empty_vmap;
 		return value_at(empty_vmap);
 	}
 	virtual der_f* der(VAR) const =0;
@@ -33,7 +57,7 @@ class CONSTANT : public der_f { public:
 		return new CONSTANT(v);
 	};
 	bool has_var(VAR id) const{return false;};
-	long double value_at(map<VAR, long double> vmap) const{
+	long double value_at(map<VARID, long double> vmap) const{
 		return v;
 	}
 	bool is_constant() const{
@@ -43,12 +67,14 @@ class CONSTANT : public der_f { public:
 
 class IDENTITY : public der_f { public:
 	VAR id;
-	IDENTITY(VAR id):id(id){};
+	IDENTITY(VAR id){
+		id.clone(&this->id);
+	};
 	operator string() const {
-		return "var_"+std::to_string(id);//TODO
+		return id.vname;
 	}
 	der_f* der(VAR _id) const{
-		if(id==_id){
+		if(id.eq(_id)){
 			return new CONSTANT(1);
 		} else {
 			return new CONSTANT(0);
@@ -58,12 +84,12 @@ class IDENTITY : public der_f { public:
 		return new IDENTITY(id);
 	};
 	
-	bool has_var(VAR _id) const{return id==_id;};
-	long double value_at(map<VAR, long double> vmap) const{
+	bool has_var(VAR _id) const{return id.eq(_id);};
+	long double value_at(map<VARID, long double> vmap) const{
 		if(vmap.empty()){
 			return 0;
 		}
-		return vmap[id];
+		return vmap[id.vid];
 	};
 };
 
@@ -105,7 +131,7 @@ class ADD : public binary_opr{ public:
 	der_f* clone() const{
 		return new ADD(lhs->clone(),rhs->clone());
 	};
-	long double value_at(map<VAR, long double> vmap) const{
+	long double value_at(map<VARID, long double> vmap) const{
 		return (lhs->value_at(vmap))+(rhs->value_at(vmap));
 	}
 };
@@ -118,7 +144,7 @@ class SUB : public binary_opr{ public:
 	der_f* clone() const{
 		return new SUB(lhs->clone(),rhs->clone());
 	};
-	long double value_at(map<VAR, long double> vmap) const{
+	long double value_at(map<VARID, long double> vmap) const{
 		return (lhs->value_at(vmap))-(rhs->value_at(vmap));
 	}
 };
@@ -134,7 +160,7 @@ class MUL : public binary_opr{ public:
 	der_f* clone() const{
 		return new MUL(lhs->clone(),rhs->clone());
 	};
-	long double value_at(map<VAR, long double> vmap) const{
+	long double value_at(map<VARID, long double> vmap) const{
 		return (lhs->value_at(vmap))*(rhs->value_at(vmap));
 	}
 };
@@ -156,7 +182,7 @@ class DIV : public binary_opr{ public:
 	der_f* clone() const{
 		return new DIV(lhs->clone(),rhs->clone());
 	};
-	long double value_at(map<VAR, long double> vmap) const{
+	long double value_at(map<VARID, long double> vmap) const{
 		return (lhs->value_at(vmap))/(rhs->value_at(vmap));
 	}
 };
@@ -190,7 +216,7 @@ class NEG: public unary_opr {public:
 	der_f* clone() const{
 		return new NEG(ihs->clone());
 	};
-	long double value_at(map<VAR, long double> vmap) const{
+	long double value_at(map<VARID, long double> vmap) const{
 		return -(ihs->value_at(vmap));
 	}
 };
@@ -211,7 +237,7 @@ class INV: public unary_opr {public:
 	der_f* clone() const{
 		return new INV(ihs->clone());
 	};
-	long double value_at(map<VAR, long double> vmap) const{
+	long double value_at(map<VARID, long double> vmap) const{
 		return 1.0/(ihs->value_at(vmap));
 	}
 };
@@ -227,7 +253,7 @@ class EXP: public unary_opr {public:
 	der_f* clone() const{
 		return new EXP(ihs->clone());
 	};
-	long double value_at(map<VAR, long double> vmap) const{
+	long double value_at(map<VARID, long double> vmap) const{
 		return exp(ihs->value_at(vmap));
 	};
 	~EXP(){};
@@ -252,7 +278,7 @@ class COS: public unary_opr {public:
 	der_f* clone() const{
 		return new COS(ihs->clone());
 	};
-	long double value_at(map<VAR, long double> vmap) const{
+	long double value_at(map<VARID, long double> vmap) const{
 		return cos(ihs->value_at(vmap));
 	};
 	~COS(){};
@@ -269,15 +295,19 @@ class SIN: public unary_opr {public:
 	der_f* clone() const{
 		return new SIN(ihs->clone());
 	};
-	long double value_at(map<VAR, long double> vmap) const{
+	long double value_at(map<VARID, long double> vmap) const{
 		return sin(ihs->value_at(vmap));
 	};
 	~SIN(){};
 };
-#include <iostream>
+
 int main(int argc, char* argv[]){
-	auto s=new EXP(new SIN(new NEG(new IDENTITY(0))));
+	VAR x("x");
+	auto s=new EXP(new SIN(new NEG(new IDENTITY(x))));
 	cout<<s->value_at_origin()<<endl;
+	map<VARID, long double> vmap;
+	vmap[x.vid]=3;
+	cout<<s->value_at(vmap)<<endl;
 	cout<<(string)(*s)<<endl;
 	cout<<(string)(*((*s).ihs))<<endl;
 	cout<<s->value_at_origin()<<endl;
