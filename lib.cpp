@@ -29,7 +29,7 @@ struct VAR{
 	}
 };
 int VAR::vid_acc=0;
-
+class CONSTANT;
 class der_f{ public:
 	virtual operator string() const =0;
 	virtual long double value_at(map<VARID, long double>) const =0;
@@ -37,7 +37,8 @@ class der_f{ public:
 		map<VARID, long double> empty_vmap;
 		return value_at(empty_vmap);
 	}
-	virtual der_f* der(VAR) const =0;
+	virtual der_f* _der(VAR) const =0;
+	der_f* der(VAR id);
 	virtual der_f* clone() const =0;
 	virtual ~der_f(){};
 	virtual bool has_var(VAR) const =0;
@@ -50,7 +51,7 @@ class CONSTANT : public der_f { public:
 	operator string() const {
 		return std::to_string(v);
 	}
-	der_f* der(VAR id) const{
+	der_f* _der(VAR id) const{
 		return new CONSTANT(0);
 	};
 	der_f* clone() const{
@@ -64,6 +65,12 @@ class CONSTANT : public der_f { public:
 		return true;
 	}
 };
+der_f* der_f::der(VAR id){
+	if(is_constant()||!has_var(id)){
+		return new CONSTANT(0);
+	}
+	return _der(id);
+}
 
 class IDENTITY : public der_f { public:
 	VAR id;
@@ -73,7 +80,7 @@ class IDENTITY : public der_f { public:
 	operator string() const {
 		return id.vname;
 	}
-	der_f* der(VAR _id) const{
+	der_f* _der(VAR _id) const{
 		if(id.eq(_id)){
 			return new CONSTANT(1);
 		} else {
@@ -145,7 +152,7 @@ class binary_opr : virtual public der_f { public:
 class ADD : public binary_opr{ public:
 	string op_sym() const{return "+";}
 	ADD(der_f* lhs, der_f* rhs):binary_opr(lhs,rhs){};
-	der_f* der(VAR id) const{
+	der_f* _der(VAR id) const{
 		return new ADD(lhs->der(id),rhs->der(id));
 	};
 	der_f* clone() const{
@@ -158,7 +165,7 @@ class ADD : public binary_opr{ public:
 class SUB : public binary_opr{ public:
 	string op_sym() const{return "-";}
 	SUB(der_f* lhs, der_f* rhs):binary_opr(lhs,rhs){};
-	der_f* der(VAR id) const{
+	der_f* _der(VAR id) const{
 		return new SUB(lhs->der(id),rhs->der(id));
 	};
 	der_f* clone() const{
@@ -171,7 +178,7 @@ class SUB : public binary_opr{ public:
 class MUL : public binary_opr{ public:
 	string op_sym() const{return "*";}
 	MUL(der_f* lhs, der_f* rhs):binary_opr(lhs,rhs){};
-	der_f* der(VAR id) const{
+	der_f* _der(VAR id) const{
 		return new ADD(
 			new MUL(lhs->der(id),rhs->clone()),
 			new MUL(lhs->clone(),rhs->der(id))
@@ -187,7 +194,7 @@ class MUL : public binary_opr{ public:
 class DIV : public binary_opr{ public:
 	string op_sym() const{return "/";}
 	DIV(der_f* lhs, der_f* rhs):binary_opr(lhs,rhs){};
-	der_f* der(VAR id) const{
+	der_f* _der(VAR id) const{
 		return new DIV(
 			new SUB(
 				new MUL(lhs->der(id),rhs->clone()),
@@ -210,7 +217,7 @@ class DIV : public binary_opr{ public:
 class NEG: public unary_opr {public:
 	string op_sym() const {return "-";}
 	NEG(der_f *ihs):unary_opr(ihs){}
-	der_f* der(VAR id) const{
+	der_f* _der(VAR id) const{
 		return new NEG(ihs->der(id));
 	}
 	der_f* clone() const{
@@ -223,7 +230,7 @@ class NEG: public unary_opr {public:
 class INV: public unary_opr {public:
 	string op_sym() const {return "inv";}
 	INV(der_f *ihs):unary_opr(ihs){}
-	der_f* der(VAR id) const{
+	der_f* _der(VAR id) const{
 		return new NEG(
 			new DIV(
 				ihs->der(id),
@@ -244,7 +251,7 @@ class INV: public unary_opr {public:
 class EXP: public unary_opr {public:
 	string op_sym() const {return "exp";}
 	EXP(der_f *ihs):unary_opr(ihs){}
-	der_f* der(VAR id) const{
+	der_f* _der(VAR id) const{
 		return new MUL(
 			this->clone(),
 			ihs->der(id)
@@ -262,7 +269,7 @@ class EXP: public unary_opr {public:
 class COS: public unary_opr {public:
 	string op_sym() const {return "cos";}
 	COS(der_f *ihs):unary_opr(ihs){}
-	der_f* der(VAR id) const{
+	der_f* _der(VAR id) const{
 		return new MUL(
 			new NEG(
 				new COS(
@@ -286,7 +293,7 @@ class COS: public unary_opr {public:
 class SIN: public unary_opr {public:
 	string op_sym() const {return "sin";}
 	SIN(der_f *ihs):unary_opr(ihs){}
-	der_f* der(VAR id) const{
+	der_f* _der(VAR id) const{
 		return new MUL(
 			new COS(ihs->clone()),
 			ihs->der(id)
@@ -303,7 +310,7 @@ class SIN: public unary_opr {public:
 class LN: public unary_opr {public:
 	string op_sym() const {return "ln";}
 	LN(der_f *ihs):unary_opr(ihs){}
-	der_f* der(VAR id) const{
+	der_f* _der(VAR id) const{
 		return new MUL(
 			new INV(ihs->clone()),
 			ihs->der(id)
@@ -321,7 +328,7 @@ class LN: public unary_opr {public:
 class POW : public binary_opr{ public:
 	string op_sym() const{return "^";}
 	POW(der_f* lhs, der_f* rhs):binary_opr(lhs,rhs){};
-	der_f* der(VAR id) const{
+	der_f* _der(VAR id) const{
 		return new MUL(
 			this->clone(),
 			new ADD(
