@@ -25,7 +25,7 @@ struct VAR{
 		return (vid==rhs.vid)&&(vname==rhs.vname);
 	};
 	bool operator<(VAR rhs) const{
-		return (vname==rhs.vname)&&(vid==rhs.vid);
+		return (vid<rhs.vid);
 	}
 };
 int VAR::vid_acc=0;
