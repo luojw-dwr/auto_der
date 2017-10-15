@@ -22,7 +22,7 @@ struct VAR{
 		src->vid=vid;
 	};
 	bool eq(VAR &rhs) const{
-		return (vid==rhs.vid)&&(vname==rhs.vname);
+		return (vid==rhs.vid);
 	};
 	bool operator<(VAR rhs) const{
 		return (vid<rhs.vid);
