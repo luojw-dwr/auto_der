@@ -439,9 +439,26 @@ class POW : public binary_opr{ public:
 	}
 };
 
+class LOG : public binary_opr{ public:
+	string op_sym() const{return "^";}
+	LOG(der_f* lhs, der_f* rhs):binary_opr(lhs,rhs){};
+	der_f* _der(VAR id) const{
+		auto p=new DIV(new LN(rhs),new LN(lhs));
+		auto res=p->der(id);
+		delete p;
+		return res;
+	};
+	der_f* clone() const{
+		return new LOG(lhs->clone(),rhs->clone());
+	};
+	double value_at(map<VARID, double> vmap) const{
+		return log(lhs->value_at(vmap))/log((rhs->value_at(vmap)));
+	}
+};
+
 int main(int argc, char* argv[]){
 	VAR x("x");
-	auto s=new POW(new LN(new ADD(new IDENTITY(x),new CONSTANT(5))),new TAN(new SIN(new NEG(new IDENTITY(x)))));
+	auto s=new LOG(new IDENTITY(x),new COS(new IDENTITY(x)));
 	cout<<s->value_at_origin()<<endl;
 	map<VARID, double> vmap;
 	vmap[x.vid]=3;
