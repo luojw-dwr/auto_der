@@ -443,7 +443,7 @@ class LOG : public binary_opr{ public:
 	string op_sym() const{return "^";}
 	LOG(der_f* lhs, der_f* rhs):binary_opr(lhs,rhs){};
 	der_f* _der(VAR id) const{
-		auto p=new DIV(new LN(rhs),new LN(lhs));
+		auto p=new DIV(new LN(rhs->clone()),new LN(lhs->clone()));
 		auto res=p->der(id);
 		delete p;
 		return res;
