@@ -9,7 +9,6 @@ struct VAR{
 	string vname;
 	VARID vid;
 	static int vid_acc;
-	static map<int, VAR> vars;
 	VAR(){
 		vid=-1;
 		vname="?";
@@ -29,7 +28,29 @@ struct VAR{
 	}
 };
 int VAR::vid_acc=0;
-class CONSTANT;
+
+#define CONSTANT(x) (new _CONSTANT((x)))
+#define IDENTITY(x) (new _IDENTITY((x)))
+
+#define ADD(lhs,rhs) (new _ADD((lhs),(rhs)))
+#define SUB(lhs,rhs) (new _SUB((lhs),(rhs)))
+#define MUL(lhs,rhs) (new _MUL((lhs),(rhs)))
+#define DIV(lhs,rhs) (new _DIV((lhs),(rhs)))
+#define POW(lhs,rhs) (new _POW((lhs),(rhs)))
+#define LOG(lhs,rhs) (new _LOG((lhs),(rhs)))
+#define INV(lhs,rhs) (new _INV((lhs),(rhs)))
+#define EXP(lhs,rhs) (new _EXP((lhs),(rhs)))
+
+#define LN(x) (new _LN((x)))
+
+#define COS(x) (new _COS((x)))
+#define SIN(x) (new _SIN((x)))
+#define TAN(x) (new _TAN((x)))
+#define COSH(x) (new _COSH((x)))
+#define SINH(x) (new _SINH((x)))
+#define TANH(x) (new _TANH((x)))
+
+class _CONSTANT;
 class der_f{ public:
 	virtual operator string() const =0;
 	virtual double value_at(map<VARID, double>) const =0;
@@ -45,17 +66,17 @@ class der_f{ public:
 	virtual bool is_constant() const {return false;}//Not so precise
 };
 
-class CONSTANT : public der_f { public:
+class _CONSTANT : public der_f { public:
 	double v;
-	CONSTANT(double v):v(v){};
+	_CONSTANT(double v):v(v){};
 	operator string() const {
 		return std::to_string(v);
 	}
 	der_f* _der(VAR id) const{
-		return new CONSTANT(0);
+		return new _CONSTANT(0);
 	};
 	der_f* clone() const{
-		return new CONSTANT(v);
+		return new _CONSTANT(v);
 	};
 	bool has_var(VAR id) const{return false;};
 	double value_at(map<VARID, double> vmap) const{
@@ -67,14 +88,14 @@ class CONSTANT : public der_f { public:
 };
 der_f* der_f::der(VAR id){
 	if(is_constant()||!has_var(id)){
-		return new CONSTANT(0);
+		return new _CONSTANT(0);
 	}
 	return _der(id);
 }
 
-class IDENTITY : public der_f { public:
+class _IDENTITY : public der_f { public:
 	VAR id;
-	IDENTITY(VAR id){
+	_IDENTITY(VAR id){
 		id.clone(&this->id);
 	};
 	operator string() const {
@@ -82,13 +103,13 @@ class IDENTITY : public der_f { public:
 	}
 	der_f* _der(VAR _id) const{
 		if(id.eq(_id)){
-			return new CONSTANT(1);
+			return new _CONSTANT(1);
 		} else {
-			return new CONSTANT(0);
+			return new _CONSTANT(0);
 		}
 	};
 	der_f* clone() const{
-		return new IDENTITY(id);
+		return new _IDENTITY(id);
 	};
 	
 	bool has_var(VAR _id) const{return id.eq(_id);};
@@ -107,7 +128,7 @@ class unary_opr : virtual public der_f {public:
 	der_f *ihs;
 	unary_opr(der_f *ihs){
 		if(ihs->is_constant()){
-			this->ihs=new CONSTANT(ihs->value_at_origin());
+			this->ihs=new _CONSTANT(ihs->value_at_origin());
 			delete ihs;
 		}else{
 			this->ihs=ihs;
@@ -128,13 +149,13 @@ class binary_opr : virtual public der_f { public:
 	der_f *lhs, *rhs;
 	binary_opr(der_f* lhs, der_f* rhs){
 		if(lhs->is_constant()){
-			this->lhs=new CONSTANT(lhs->value_at_origin());
+			this->lhs=new _CONSTANT(lhs->value_at_origin());
 			delete lhs;
 		}else{
 			this->lhs=lhs;
 		}
 		if(rhs->is_constant()){
-			this->rhs=new CONSTANT(rhs->value_at_origin());
+			this->rhs=new _CONSTANT(rhs->value_at_origin());
 			delete rhs;
 		}else{
 			this->rhs=rhs;
@@ -149,92 +170,92 @@ class binary_opr : virtual public der_f { public:
 	};
 	bool is_constant() const{return (lhs->is_constant())&&(rhs->is_constant());}
 };
-class ADD : public binary_opr{ public:
+class _ADD : public binary_opr{ public:
 	string op_sym() const{return "+";}
-	ADD(der_f* lhs, der_f* rhs):binary_opr(lhs,rhs){};
+	_ADD(der_f* lhs, der_f* rhs):binary_opr(lhs,rhs){};
 	der_f* _der(VAR id) const{
-		return new ADD(lhs->der(id),rhs->der(id));
+		return new _ADD(lhs->der(id),rhs->der(id));
 	};
 	der_f* clone() const{
-		return new ADD(lhs->clone(),rhs->clone());
+		return new _ADD(lhs->clone(),rhs->clone());
 	};
 	double value_at(map<VARID, double> vmap) const{
 		return (lhs->value_at(vmap))+(rhs->value_at(vmap));
 	}
 };
-class SUB : public binary_opr{ public:
+class _SUB : public binary_opr{ public:
 	string op_sym() const{return "-";}
-	SUB(der_f* lhs, der_f* rhs):binary_opr(lhs,rhs){};
+	_SUB(der_f* lhs, der_f* rhs):binary_opr(lhs,rhs){};
 	der_f* _der(VAR id) const{
-		return new SUB(lhs->der(id),rhs->der(id));
+		return new _SUB(lhs->der(id),rhs->der(id));
 	};
 	der_f* clone() const{
-		return new SUB(lhs->clone(),rhs->clone());
+		return new _SUB(lhs->clone(),rhs->clone());
 	};
 	double value_at(map<VARID, double> vmap) const{
 		return (lhs->value_at(vmap))-(rhs->value_at(vmap));
 	}
 };
-class MUL : public binary_opr{ public:
+class _MUL : public binary_opr{ public:
 	string op_sym() const{return "*";}
-	MUL(der_f* lhs, der_f* rhs):binary_opr(lhs,rhs){};
+	_MUL(der_f* lhs, der_f* rhs):binary_opr(lhs,rhs){};
 	der_f* _der(VAR id) const{
-		return new ADD(
-			new MUL(lhs->der(id),rhs->clone()),
-			new MUL(lhs->clone(),rhs->der(id))
+		return new _ADD(
+			new _MUL(lhs->der(id),rhs->clone()),
+			new _MUL(lhs->clone(),rhs->der(id))
 		);
 	};
 	der_f* clone() const{
-		return new MUL(lhs->clone(),rhs->clone());
+		return new _MUL(lhs->clone(),rhs->clone());
 	};
 	double value_at(map<VARID, double> vmap) const{
 		return (lhs->value_at(vmap))*(rhs->value_at(vmap));
 	}
 };
-class DIV : public binary_opr{ public:
+class _DIV : public binary_opr{ public:
 	string op_sym() const{return "/";}
-	DIV(der_f* lhs, der_f* rhs):binary_opr(lhs,rhs){};
+	_DIV(der_f* lhs, der_f* rhs):binary_opr(lhs,rhs){};
 	der_f* _der(VAR id) const{
-		return new DIV(
-			new SUB(
-				new MUL(lhs->der(id),rhs->clone()),
-				new MUL(lhs->clone(),rhs->der(id))
+		return new _DIV(
+			new _SUB(
+				new _MUL(lhs->der(id),rhs->clone()),
+				new _MUL(lhs->clone(),rhs->der(id))
 			),
-			new MUL(
+			new _MUL(
 				rhs->clone(),
 				rhs->clone()
 			)
 		);
 	};
 	der_f* clone() const{
-		return new DIV(lhs->clone(),rhs->clone());
+		return new _DIV(lhs->clone(),rhs->clone());
 	};
 	double value_at(map<VARID, double> vmap) const{
 		return (lhs->value_at(vmap))/(rhs->value_at(vmap));
 	}
 };
 
-class NEG: public unary_opr {public:
+class _NEG: public unary_opr {public:
 	string op_sym() const {return "-";}
-	NEG(der_f *ihs):unary_opr(ihs){}
+	_NEG(der_f *ihs):unary_opr(ihs){}
 	der_f* _der(VAR id) const{
-		return new NEG(ihs->der(id));
+		return new _NEG(ihs->der(id));
 	}
 	der_f* clone() const{
-		return new NEG(ihs->clone());
+		return new _NEG(ihs->clone());
 	};
 	double value_at(map<VARID, double> vmap) const{
 		return -(ihs->value_at(vmap));
 	}
 };
-class INV: public unary_opr {public:
+class _INV: public unary_opr {public:
 	string op_sym() const {return "inv";}
-	INV(der_f *ihs):unary_opr(ihs){}
+	_INV(der_f *ihs):unary_opr(ihs){}
 	der_f* _der(VAR id) const{
-		return new NEG(
-			new DIV(
+		return new _NEG(
+			new _DIV(
 				ihs->der(id),
-				new MUL(
+				new _MUL(
 					ihs->clone(),
 					ihs->clone()
 				)
@@ -242,158 +263,158 @@ class INV: public unary_opr {public:
 		);
 	}
 	der_f* clone() const{
-		return new INV(ihs->clone());
+		return new _INV(ihs->clone());
 	};
 	double value_at(map<VARID, double> vmap) const{
 		return 1.0/(ihs->value_at(vmap));
 	}
 };
-class EXP: public unary_opr {public:
+class _EXP: public unary_opr {public:
 	string op_sym() const {return "exp";}
-	EXP(der_f *ihs):unary_opr(ihs){}
+	_EXP(der_f *ihs):unary_opr(ihs){}
 	der_f* _der(VAR id) const{
-		return new MUL(
+		return new _MUL(
 			this->clone(),
 			ihs->der(id)
 		);
 	}
 	der_f* clone() const{
-		return new EXP(ihs->clone());
+		return new _EXP(ihs->clone());
 	};
 	double value_at(map<VARID, double> vmap) const{
 		return exp(ihs->value_at(vmap));
 	};
-	~EXP(){};
+	~_EXP(){};
 };
-class COS;
-class SIN;
-class COS: public unary_opr {public:
+class _COS;
+class _SIN;
+class _COS: public unary_opr {public:
 	string op_sym() const {return "cos";}
-	COS(der_f *ihs):unary_opr(ihs){}
+	_COS(der_f *ihs):unary_opr(ihs){}
 	der_f* _der(VAR id) const;
 	der_f* clone() const{
-		return new COS(ihs->clone());
+		return new _COS(ihs->clone());
 	};
 	double value_at(map<VARID, double> vmap) const{
 		return cos(ihs->value_at(vmap));
 	};
-	~COS(){};
+	~_COS(){};
 };
-class SIN: public unary_opr {public:
+class _SIN: public unary_opr {public:
 	string op_sym() const {return "sin";}
-	SIN(der_f *ihs):unary_opr(ihs){}
+	_SIN(der_f *ihs):unary_opr(ihs){}
 	der_f* _der(VAR id) const;
 	der_f* clone() const{
-		return new SIN(ihs->clone());
+		return new _SIN(ihs->clone());
 	};
 	double value_at(map<VARID, double> vmap) const{
 		return sin(ihs->value_at(vmap));
 	};
-	~SIN(){};
+	~_SIN(){};
 };
-der_f* COS::_der(VAR id) const{
-	return new MUL(
-		new NEG(
-			new SIN(
+der_f* _COS::_der(VAR id) const{
+	return new _MUL(
+		new _NEG(
+			new _SIN(
 				ihs->clone()
 			)
 		),
 		ihs->der(id)
 	);
 };
-der_f* SIN::_der(VAR id) const{
-	return new MUL(
-		new COS(ihs->clone()),
+der_f* _SIN::_der(VAR id) const{
+	return new _MUL(
+		new _COS(ihs->clone()),
 		ihs->der(id)
 	);
 };
-class TAN: public unary_opr {public:
+class _TAN: public unary_opr {public:
 	string op_sym() const {return "tan";}
-	TAN(der_f *ihs):unary_opr(ihs){}
+	_TAN(der_f *ihs):unary_opr(ihs){}
 	der_f* _der(VAR id) const{
-		return new MUL(
-			new INV(
-				new MUL(
-					new COS(ihs->clone()),
-					new COS(ihs->clone())
+		return new _MUL(
+			new _INV(
+				new _MUL(
+					new _COS(ihs->clone()),
+					new _COS(ihs->clone())
 				)
 			),
 			ihs->der(id)
 		);
 	};
 	der_f* clone() const{
-		return new TAN(ihs->clone());
+		return new _TAN(ihs->clone());
 	};
 	double value_at(map<VARID, double> vmap) const{
 		return tan(ihs->value_at(vmap));
 	};
-	~TAN(){};
+	~_TAN(){};
 };
-class COSH;
-class SINH;
-class COSH: public unary_opr {public:
+class _COSH;
+class _SINH;
+class _COSH: public unary_opr {public:
 	string op_sym() const {return "cosh";}
-	COSH(der_f *ihs):unary_opr(ihs){}
+	_COSH(der_f *ihs):unary_opr(ihs){}
 	der_f* _der(VAR id) const;
 	der_f* clone() const{
-		return new COSH(ihs->clone());
+		return new _COSH(ihs->clone());
 	};
 	double value_at(map<VARID, double> vmap) const{
 		return cosh(ihs->value_at(vmap));
 	};
-	~COSH(){};
+	~_COSH(){};
 };
-class SINH: public unary_opr {public:
+class _SINH: public unary_opr {public:
 	string op_sym() const {return "sinh";}
-	SINH(der_f *ihs):unary_opr(ihs){}
+	_SINH(der_f *ihs):unary_opr(ihs){}
 	der_f* _der(VAR id) const;
 	der_f* clone() const{
-		return new SINH(ihs->clone());
+		return new _SINH(ihs->clone());
 	};
 	double value_at(map<VARID, double> vmap) const{
 		return sinh(ihs->value_at(vmap));
 	};
-	~SINH(){};
+	~_SINH(){};
 };
-der_f* COSH::_der(VAR id) const{
-	return new MUL(
-		new SIN(
+der_f* _COSH::_der(VAR id) const{
+	return new _MUL(
+		new _SIN(
 			ihs->clone()
 		),
 		ihs->der(id)
 	);
 };
-der_f* SINH::_der(VAR id) const{
-	return new MUL(
-		new COSH(ihs->clone()),
+der_f* _SINH::_der(VAR id) const{
+	return new _MUL(
+		new _COSH(ihs->clone()),
 		ihs->der(id)
 	);
 };
-class LN: public unary_opr {public:
+class _LN: public unary_opr {public:
 	string op_sym() const {return "ln";}
-	LN(der_f *ihs):unary_opr(ihs){}
+	_LN(der_f *ihs):unary_opr(ihs){}
 	der_f* _der(VAR id) const{
-		return new MUL(
-			new INV(ihs->clone()),
+		return new _MUL(
+			new _INV(ihs->clone()),
 			ihs->der(id)
 		);
 	};
 	der_f* clone() const{
-		return new LN(ihs->clone());
+		return new _LN(ihs->clone());
 	};
 	double value_at(map<VARID, double> vmap) const{
 		return log(ihs->value_at(vmap));
 	};
-	~LN(){};
+	~_LN(){};
 };
-class TANH: public unary_opr {public:
+class _TANH: public unary_opr {public:
 	string op_sym() const {return "tanh";}
-	TANH(der_f *ihs):unary_opr(ihs){}
+	_TANH(der_f *ihs):unary_opr(ihs){}
 	der_f* _der(VAR id) const{
-		return new MUL(
-			new SUB(
-				new CONSTANT(1),
-				new MUL(
+		return new _MUL(
+			new _SUB(
+				new _CONSTANT(1),
+				new _MUL(
 					this->clone(),
 					this->clone()
 				)
@@ -402,27 +423,27 @@ class TANH: public unary_opr {public:
 		);
 	};
 	der_f* clone() const{
-		return new TANH(ihs->clone());
+		return new _TANH(ihs->clone());
 	};
 	double value_at(map<VARID, double> vmap) const{
 		return tanh(ihs->value_at(vmap));
 	};
-	~TANH(){};
+	~_TANH(){};
 };
 
-class POW : public binary_opr{ public:
+class _POW : public binary_opr{ public:
 	string op_sym() const{return "^";}
-	POW(der_f* lhs, der_f* rhs):binary_opr(lhs,rhs){};
+	_POW(der_f* lhs, der_f* rhs):binary_opr(lhs,rhs){};
 	der_f* _der(VAR id) const{
-		return new MUL(
+		return new _MUL(
 			this->clone(),
-			new ADD(
-				new MUL(
+			new _ADD(
+				new _MUL(
 					rhs->der(id),
-					new LN(lhs->clone())
+					new _LN(lhs->clone())
 				),
-				new MUL(
-					new DIV(
+				new _MUL(
+					new _DIV(
 						rhs->clone(),
 						lhs->clone()
 					),
@@ -432,24 +453,24 @@ class POW : public binary_opr{ public:
 		);
 	};
 	der_f* clone() const{
-		return new POW(lhs->clone(),rhs->clone());
+		return new _POW(lhs->clone(),rhs->clone());
 	};
 	double value_at(map<VARID, double> vmap) const{
 		return pow((lhs->value_at(vmap)),(rhs->value_at(vmap)));
 	}
 };
 
-class LOG : public binary_opr{ public:
+class _LOG : public binary_opr{ public:
 	string op_sym() const{return "^";}
-	LOG(der_f* lhs, der_f* rhs):binary_opr(lhs,rhs){};
+	_LOG(der_f* lhs, der_f* rhs):binary_opr(lhs,rhs){};
 	der_f* _der(VAR id) const{
-		auto p=new DIV(new LN(rhs->clone()),new LN(lhs->clone()));
+		auto p=new _DIV(new _LN(rhs->clone()),new _LN(lhs->clone()));
 		auto res=p->der(id);
 		delete p;
 		return res;
 	};
 	der_f* clone() const{
-		return new LOG(lhs->clone(),rhs->clone());
+		return new _LOG(lhs->clone(),rhs->clone());
 	};
 	double value_at(map<VARID, double> vmap) const{
 		return log(lhs->value_at(vmap))/log((rhs->value_at(vmap)));
@@ -458,13 +479,20 @@ class LOG : public binary_opr{ public:
 
 int main(int argc, char* argv[]){
 	VAR x("x");
-	auto s=new LOG(new IDENTITY(x),new COS(new IDENTITY(x)));
-	cout<<s->value_at_origin()<<endl;
-	map<VARID, double> vmap;
-	vmap[x.vid]=3;
-	cout<<s->value_at(vmap)<<endl;
+	auto s=MUL(
+		ADD(
+			CONSTANT(1),
+			IDENTITY(x)
+		),
+		SUB(
+			ADD(
+				CONSTANT(1),
+				IDENTITY(x)
+			),
+			CONSTANT(1)
+		)
+	);
 	cout<<(string)(*s)<<endl;
-	cout<<s->value_at_origin()<<endl;
 	auto s_der=s->der(x);
 	cout<<(string)(*s_der)<<endl;
 	delete s_der;
